@@ -46,9 +46,9 @@ final class Pet {
     var grounded = true
     var frame: CGFloat = 0          // seconds of animation time accumulated
 
-    var bounds: CGSize
-    var floorY: CGFloat                     // resting height of the floor (above the Dock)
-    var shelves: [Shelf] = []
+    var bounds: CGSize                      // size of the overlay (union of all displays)
+    var shelves: [Shelf] = []               // window top edges (from CGWindowList)
+    var floorShelves: [Shelf] = []          // one ground segment per display
     var currentShelf: Shelf
 
     // Behavior timers
@@ -66,10 +66,11 @@ final class Pet {
     private var dragTarget = CGPoint.zero
     private var dragVel = CGVector.zero
 
-    init(bounds: CGSize, floorY: CGFloat = 0) {
+    init(bounds: CGSize) {
         self.bounds = bounds
-        self.floorY = floorY
-        self.currentShelf = Shelf(y: floorY, xMin: 0, xMax: bounds.width, isFloor: true)
+        let floor = Shelf(y: 0, xMin: 0, xMax: bounds.width, isFloor: true)
+        self.floorShelves = [floor]
+        self.currentShelf = floor
     }
 
     /// Hit area used to decide whether the mouse is "over" the cat.
@@ -80,8 +81,14 @@ final class Pet {
                height: spriteSize.height)
     }
 
-    private var floorShelf: Shelf {
-        Shelf(y: floorY, xMin: 0, xMax: bounds.width, isFloor: true)
+    /// A floor segment whose left edge touches `s`'s right edge at the same
+    /// height — i.e. the display immediately to the right that Mango can walk
+    /// onto. `nil` at the right edge of the whole desktop.
+    private func floorRightOf(_ s: Shelf) -> Shelf? {
+        floorShelves.first { abs($0.xMin - s.xMax) < 8 && abs($0.y - s.y) < 6 }
+    }
+    private func floorLeftOf(_ s: Shelf) -> Shelf? {
+        floorShelves.first { abs($0.xMax - s.xMin) < 8 && abs($0.y - s.y) < 6 }
     }
 
     // MARK: Main update
@@ -161,8 +168,16 @@ final class Pet {
             facingLeft = walkDir < 0
 
             if currentShelf.isFloor {
-                if pos.x < margin { pos.x = margin; walkDir = 1; facingLeft = false }
-                else if pos.x > bounds.width - margin { pos.x = bounds.width - margin; walkDir = -1; facingLeft = true }
+                // Cross onto a touching display's floor, or turn at the desktop edge.
+                if let nb = floorRightOf(currentShelf), pos.x >= currentShelf.xMax - 2 {
+                    currentShelf = nb; pos.x = nb.xMin + 3
+                } else if floorRightOf(currentShelf) == nil && pos.x > currentShelf.xMax - margin {
+                    pos.x = currentShelf.xMax - margin; walkDir = -1; facingLeft = true
+                } else if let nb = floorLeftOf(currentShelf), pos.x <= currentShelf.xMin + 2 {
+                    currentShelf = nb; pos.x = nb.xMax - 3
+                } else if floorLeftOf(currentShelf) == nil && pos.x < currentShelf.xMin + margin {
+                    pos.x = currentShelf.xMin + margin; walkDir = 1; facingLeft = false
+                }
             } else {
                 // Reached the end of a window's top edge.
                 if pos.x <= currentShelf.xMin + 2 || pos.x >= currentShelf.xMax - 2 {
@@ -220,9 +235,23 @@ final class Pet {
         guard vel.dy <= 0 else { state = .fall; return }   // only land while descending
 
         var landing: Shelf?
-        for s in shelves + [floorShelf] where pos.x >= s.xMin && pos.x <= s.xMax {
+        for s in shelves + floorShelves where pos.x >= s.xMin && pos.x <= s.xMax {
             if prevY >= s.y && pos.y <= s.y {              // crossed this surface top-down
                 if landing == nil || s.y > landing!.y { landing = s }
+            }
+        }
+
+        // Safety net: if Mango fell through a gap between mismatched displays,
+        // land him on the horizontally nearest floor so he never drops away.
+        if landing == nil && pos.y < -2 {
+            func gap(_ f: Shelf) -> CGFloat {
+                if pos.x < f.xMin { return f.xMin - pos.x }
+                if pos.x > f.xMax { return pos.x - f.xMax }
+                return 0
+            }
+            if let f = floorShelves.min(by: { gap($0) < gap($1) }) {
+                pos.x = min(max(pos.x, f.xMin + margin), f.xMax - margin)
+                landing = f
             }
         }
 
@@ -313,6 +342,22 @@ final class Pet {
             grounded = false
             state = .fall
             vel = CGVector(dx: 0, dy: -20)
+        }
+    }
+
+    /// Replace the per-display floor segments (e.g. after the screen layout
+    /// changes) and keep a grounded cat attached to the floor beneath it.
+    func setFloors(_ f: [Shelf]) {
+        floorShelves = f
+        guard grounded, currentShelf.isFloor, !f.isEmpty else { return }
+        let under = f.first { pos.x >= $0.xMin && pos.x <= $0.xMax }
+        let nearest = f.min {
+            abs(($0.xMin + $0.xMax) / 2 - pos.x) < abs(($1.xMin + $1.xMax) / 2 - pos.x)
+        }
+        if let nf = under ?? nearest {
+            currentShelf = nf
+            pos.x = min(max(pos.x, nf.xMin + margin), nf.xMax - margin)
+            pos.y = nf.y
         }
     }
 
