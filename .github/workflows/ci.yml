@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    name: Build Mango.app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: ./build.sh
+
+      - name: Verify bundle was produced
+        run: test -x Mango.app/Contents/MacOS/Mango && echo "Mango.app built OK"
