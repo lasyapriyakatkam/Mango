@@ -25,14 +25,47 @@ not comnyang's assets).
   application windows, lands and walks along them, paces back at the ends, and
   sometimes clings and hangs off the edge before climbing back up.
 
-## Build & run
+## Install
 
-You need the Xcode Command Line Tools (Swift). No Homebrew/Xcode IDE required.
+Mango is currently distributed as source — you build it once, then keep the
+`.app` like any other application. (No prebuilt download yet; the binary is
+unsigned, so building it yourself is the cleanest route.)
+
+**1. Get the code & build it.** You need the Xcode Command Line Tools (Swift) —
+install them with `xcode-select --install` if you don't have them. No Homebrew
+or Xcode IDE required.
 
 ```bash
-./build.sh          # produces ./Mango.app
-open ./Mango.app
+git clone https://github.com/lasyapriyakatkam/Mango.git
+cd Mango
+./build.sh            # produces ./Mango.app
 ```
+
+**2. Move it to Applications** (so it lives with your other apps):
+
+```bash
+mv ./Mango.app /Applications/
+```
+
+**3. Launch it:**
+
+```bash
+open /Applications/Mango.app
+```
+
+> **First launch:** because the app isn't code-signed, macOS may say it "cannot
+> be opened." Either **right-click `Mango.app` → Open → Open**, or clear the
+> quarantine flag once:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Mango.app
+> ```
+
+**Launch at login (optional):** System Settings → General → Login Items → add
+`Mango.app`, so Mango greets you every time you start your Mac.
+
+**Uninstall:** quit from the 🐾 menu, then `rm -rf /Applications/Mango.app`.
+
+## Usage
 
 The app has no Dock icon (it's a menu-bar agent). Control Mango from the **🐾**
 menu in the menu bar:
