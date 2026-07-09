@@ -24,6 +24,9 @@ not comnyang's assets).
 - **Climb & hang on window edges** — detects the top edges of your real
   application windows, lands and walks along them, paces back at the ends, and
   sometimes clings and hangs off the edge before climbing back up.
+- **Multi-display** — roams across every connected display. Drag Mango from one
+  screen to another (he'll even draw across the seam), and he walks between
+  displays whose edges line up.
 
 ## Install
 
@@ -89,8 +92,8 @@ never gets in your way.
 | File | Role |
 |------|------|
 | `Sources/Mango/main.swift` | Entry point; runs as an accessory (menu-bar) app. |
-| `AppDelegate.swift` | Creates the full-screen transparent overlay panel, the 60 fps update loop, the menu-bar item, and per-frame click-through toggling. |
-| `PetPanel.swift` | The non-activating floating panel + the view that draws the cat and forwards mouse events. |
+| `AppDelegate.swift` | Creates one transparent overlay window per display, the 60 fps update loop, the menu-bar item, and per-frame click-through toggling. |
+| `PetPanel.swift` | The non-activating floating panel + the per-display view that draws the cat (in global desktop coordinates) and forwards mouse events. |
 | `Pet.swift` | State machine + physics: wandering AI, gravity, dragging/throwing, landing on shelves, edge climbing/hanging. |
 | `CatRenderer.swift` | Draws the cat in every pose with Core Graphics vector primitives. |
 | `WindowEdges.swift` | Uses `CGWindowList` to find the top edges of on-screen windows (no special permission needed — only window *bounds* are read). |
@@ -98,7 +101,10 @@ never gets in your way.
 
 ## Notes & limitations
 
-- Runs on the **main display** only; multi-monitor support isn't implemented yet.
+- **Multi-display** works with "Displays have separate Spaces" either on or off
+  (one overlay window per display). Mango only walks *between* displays whose
+  bottom edges line up; if a display is offset vertically he still lands and
+  roams there, but won't stroll across the gap — drag him over instead.
 - Window-edge detection reads window geometry via `CGWindowList`, which needs no
   permissions. If edges ever seem stale, it's because the list is polled ~every
   0.6 s.
@@ -107,21 +113,19 @@ never gets in your way.
 
 ## Ideas to extend
 
-- Multi-monitor roaming.
 - More characters / color skins (swap the palette in `CatRenderer`).
 - Drop-in PNG sprite sheets instead of vector art.
 - Feeding / petting interactions, a settings window, launch-at-login.
 
 ## Contributing
 
-Contributions are very welcome — bug fixes, new behaviors, new color skins, or
-multi-monitor support. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for how to
-build, run, and submit changes, and the
-[Code of Conduct](CODE_OF_CONDUCT.md). Good first issues:
+Contributions are very welcome — bug fixes, new behaviors, or new color skins.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for how to build, run, and submit
+changes, and the [Code of Conduct](CODE_OF_CONDUCT.md). Good first issues:
 
 - Add a new color skin by tweaking the palette in `CatRenderer.swift`.
-- Make Mango roam across multiple displays.
 - Add a "launch at login" toggle.
+- Let Mango walk across displays whose edges don't perfectly line up.
 
 ## License
 
